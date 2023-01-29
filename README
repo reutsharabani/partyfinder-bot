@@ -1,0 +1,16 @@
+Prerequisites:
+--------------
+- Set DISCORD_TOKEN to your bot's token
+- Set DISCORD_ADMIN to the admin user string id
+- Set BACKUP_BUCKET_NAME to an accessible (read, write, list) s3 bucket name for backups
+- Run bot.py
+
+
+sqlite db will be created under `partyfinder.db`
+
+
+Admin only:
+-----------
+Backup using `!backup`
+Show backup names using `!backups`
+Restore using `!restore <backup_name>`

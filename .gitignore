@@ -1,0 +1,6 @@
+__pycache__/
+.idea/
+.git/
+partyfinder.db
+# db backups that survived
+202*
