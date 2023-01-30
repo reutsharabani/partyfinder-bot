@@ -14,7 +14,8 @@ logger = logging.getLogger('core')
 
 
 def s3_connection():
-    session = boto3.Session(profile_name='partyfinder')
+    session = boto3.Session(aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                            aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
     return session.client('s3')
 
 
@@ -66,8 +67,8 @@ def backups():
         yield obj['Key']
 
 
-def restore(backup):
+def restore(backup_name):
     db.close_connection()
-    s3_connection().download_file(backup_bucket_name, backup, db.db_file_name)
+    s3_connection().download_file(backup_bucket_name, backup_name, db.db_file_name)
     db.open_connection()
-    return 'restored from %s' % backup
+    return 'restored from %s' % backup_name

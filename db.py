@@ -21,7 +21,7 @@ conn.execute("create table if not exists player_positions ("
 def register(discord_id, mmr):
     conn.execute("insert into players(discord_id, mmr) "
                  f"values ('{discord_id}', '{mmr}')")
-    for position in range(1,6):
+    for position in range(1, 6):
         conn.execute("insert into player_positions(discord_id, position) "
                      f"values ('{discord_id}', '{position}')")
     conn.commit()
@@ -37,8 +37,8 @@ def get_mmr(discord_id):
 
 def get_positions(discord_id):
     rows = sorted(conn.execute("select position "
-                             "from player_positions "
-                             f"where discord_id = '{discord_id}'"))
+                               "from player_positions "
+                               f"where discord_id = '{discord_id}'"))
     if rows:
         return {row[0] for row in rows}
 
@@ -75,16 +75,17 @@ def relevant_players(discord_id, mmr_diff):
     logger.warning(f'find relevant players for {mmr} {wanted_positions} {mmr_diff}')
     min_mmr = mmr - mmr_diff
     max_mmr = mmr + mmr_diff
-    players = set(conn.execute(f"select players.discord_id, players.mmr "
-                               f"from players "
-                               f"join player_positions "
-                               f"on player_positions.discord_id = players.discord_id "
-                               f"where players.mmr < '{max_mmr}' "
-                               f"and players.discord_id != {discord_id} "
-                               f"and players.mmr > '{min_mmr}' "
-                               f"and player_positions.position in ({','.join(map(str, wanted_positions))})"))
-    logger.warning(f'players {players}')
-    return players
+    plrs = set(conn.execute(f"select players.discord_id, players.mmr "
+                            f"from players "
+                            f"join player_positions "
+                            f"on player_positions.discord_id = players.discord_id "
+                            f"where players.mmr < '{max_mmr}' "
+                            # TODO: re-add :) 
+                            # f"and players.discord_id != {discord_id} "
+                            f"and players.mmr > '{min_mmr}' "
+                            f"and player_positions.position in ({','.join(map(str, wanted_positions))})"))
+    logger.warning(f'players {plrs}')
+    return plrs
 
 
 def players():

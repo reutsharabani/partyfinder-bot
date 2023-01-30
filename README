@@ -2,6 +2,7 @@ Prerequisites:
 --------------
 - Set DISCORD_TOKEN to your bot's token
 - Set DISCORD_ADMIN to the admin user string id
+- Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to credentials for bucket (see next)
 - Set BACKUP_BUCKET_NAME to an accessible (read, write, list) s3 bucket name for backups
 - Run bot.py
 
@@ -14,3 +15,11 @@ Admin only:
 Backup using `!backup`
 Show backup names using `!backups`
 Restore using `!restore <backup_name>`
+
+You can also build via docker (fill in the build args with your values for the env vars):
+
+```bash
+docker build . --build-arg DISCORD_TOKEN= --build-arg DISCORD_ADMIN= --build-arg BACKUP_BUCKET_NAME= --build-arg AWS_ACCESS_KEY_ID= --build-arg AWS_SECRET_ACCESS_KEY= -t partyfinder-bot
+```
+
+You should now have a docker image for partyfinder-bot (with baked confidential env vars, so be careful!)
