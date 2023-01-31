@@ -1,5 +1,6 @@
-import sqlite3
 import logging
+import random
+import sqlite3
 
 logger = logging.getLogger("db")
 
@@ -66,7 +67,7 @@ def delete_player(discord_id):
     conn.commit()
 
 
-def relevant_players(discord_id, mmr_diff):
+def relevant_players(discord_id, mmr_diff=1000, max_suggestions=10):
     user_positions = (get_positions(discord_id) or set())
     wanted_positions = {1, 2, 3, 4, 5} - user_positions
     mmr = get_mmr(discord_id)
@@ -81,11 +82,11 @@ def relevant_players(discord_id, mmr_diff):
                             f"on player_positions.discord_id = players.discord_id "
                             f"where players.mmr < '{max_mmr}' "
                             # TODO: re-add :) 
-                            # f"and players.discord_id != {discord_id} "
+                            f"and players.discord_id != {discord_id} "
                             f"and players.mmr > '{min_mmr}' "
                             f"and player_positions.position in ({','.join(map(str, wanted_positions))})"))
     logger.warning(f'players {plrs}')
-    return plrs
+    return random.sample(list(plrs), k=min(len(plrs), max_suggestions))
 
 
 def players():

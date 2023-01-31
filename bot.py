@@ -8,7 +8,7 @@ from discord import Status
 from discord.ext import commands
 
 import db
-import core
+import s3
 
 admin = os.environ['DISCORD_ADMIN']
 intents = discord.Intents.all()
@@ -42,19 +42,19 @@ def protected(coro):
                          'See `!help` for changing positions or updating mmr as you descend into herald ')
 async def register(ctx, mmr):
     discord_id = ctx.message.author.id
-    core.init_user(discord_id, mmr)
+    db.register(discord_id, mmr)
     await ctx.send(f'registered {discord_id} with mmr of {mmr} mmr. Use `!set_mmr <mmr>` if incorrect.')
 
 
 @bot.command(brief='Suggest players to party with',
              description='Suggests players to play with based on mmr difference (optional, default 1000) and position')
-async def suggest(ctx, mmr_diff=1000):
+async def suggest(ctx, mmr_diff=1000, max_suggestions=10):
     discord_id = ctx.message.author.id
     if not db.get_mmr(discord_id):
         await ctx.send('please !register first')
         return
     did_to_member = {m.id: m for m in bot.get_all_members()}
-    suggestions = [(did, mmr) for did, mmr in core.relevant_players(discord_id, mmr_diff) if
+    suggestions = [(did, mmr) for did, mmr in db.relevant_players(discord_id, mmr_diff, max_suggestions) if
                    _status(did_to_member, did) == Status.online]
     if not suggestions:
         await ctx.send('could not find suggestions :(')
@@ -66,7 +66,7 @@ async def suggest(ctx, mmr_diff=1000):
     headers = template.format('Discord Id', 'MMR', 'Status')
     separator = '-' * len(headers)
     table = '\n'.join(template.format(did, mmr, str(_status(did_to_member, did))) for did, mmr in suggestions)
-    await ctx.message.author.send('\n'.join([mentions, table_sep, headers, separator, table, table_sep]))
+    await ctx.send('\n'.join([mentions, table_sep, headers, separator, table, table_sep]))
 
 
 @bot.command(brief='Show all registered players',
@@ -105,7 +105,8 @@ async def get_mmr(ctx):
              description='Set your mmr. Show with `!get_mmr`')
 async def set_mmr(ctx, new_mmr: int):
     discord_id = ctx.message.author.id
-    old_mmr = core.update_mmr(discord_id, new_mmr)
+    old_mmr = db.get_mmr(discord_id)
+    db.update_mmr(discord_id, new_mmr)
     await ctx.send(f'mmr set {old_mmr} -> {new_mmr}')
 
 
@@ -153,7 +154,7 @@ async def remove(ctx):
              hidden=True)
 @protected
 async def backup(ctx):
-    response = core.backup()
+    response = s3.backup()
     await ctx.send(response)
 
 
@@ -163,7 +164,7 @@ async def backup(ctx):
 @protected
 async def fake(ctx, mmr):
     discord_id = random.randint(-999999, -1)
-    core.init_user(discord_id, mmr)
+    db.register(discord_id, mmr)
     await ctx.send(f'registered {discord_id} with mmr of {mmr} mmr. Use `!set_mmr <mmr>` if incorrect.')
 
 
@@ -172,7 +173,7 @@ async def fake(ctx, mmr):
              hidden=True)
 @protected
 async def restore(ctx, bkp):
-    response = core.restore(bkp)
+    response = s3.restore(bkp)
     await ctx.send(response)
 
 
@@ -181,9 +182,8 @@ async def restore(ctx, bkp):
              hidden=True)
 @protected
 async def backups(ctx):
-    bkps = core.backups()
-    for bkp in sorted(bkps, reverse=True):
-        await ctx.send(bkp)
+    bkps = s3.backups()
+    await ctx.send('\n'.join(sorted(bkps, reverse=True)))
 
 
 if __name__ == "__main__":
