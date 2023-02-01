@@ -19,10 +19,10 @@ conn.execute("create table if not exists player_positions ("
              "PRIMARY KEY (discord_id, position))")
 
 
-def register(discord_id, mmr):
+def register(discord_id, mmr, positions):
     conn.execute("insert into players(discord_id, mmr) "
                  f"values ('{discord_id}', '{mmr}')")
-    for position in range(1, 6):
+    for position in positions:
         conn.execute("insert into player_positions(discord_id, position) "
                      f"values ('{discord_id}', '{position}')")
     conn.commit()
@@ -50,13 +50,10 @@ def update_mmr(discord_id, mmr):
     conn.commit()
 
 
-def add_position(discord_id, position):
-    conn.execute(f"insert into player_positions (discord_id, position) VALUES ({discord_id}, {position})")
-    conn.commit()
-
-
-def remove_position(discord_id, position):
-    conn.execute(f"delete from player_positions where discord_id = {discord_id} and position = {position}")
+def set_positions(discord_id, positions):
+    conn.execute(f"delete from player_positions where discord_id = {discord_id}")
+    for position in positions:
+        conn.execute(f"insert into player_positions (discord_id, position) VALUES ({discord_id}, {position})")
     conn.commit()
 
 

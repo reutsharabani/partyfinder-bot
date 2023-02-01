@@ -4,7 +4,7 @@ import os
 import random
 
 import discord
-from discord import Status
+from discord import Status, app_commands
 from discord.ext import commands
 
 import db
@@ -19,7 +19,7 @@ def _status(did_to_member, did):
     # noinspection PyBroadException
     try:
         return did_to_member.get(did).status
-    except:
+    except Exception:
         return Status.offline if did % 2 else Status.online
 
 
@@ -34,27 +34,40 @@ def protected(coro):
             raise Exception('not allowed')
         logging.error('running protected command')
         return await coro(ctx, *args, **kwargs)
+
     return wrapper
 
 
-@bot.command(brief='Register to party finder with your mmr. You will be assigned all positions.',
+@bot.command(brief='Register to party finder with your mmr. '
+                   'If you don\'t specify positions you will be assigned all positions.',
              description='Register to party finder with your mmr. You will be assigned all positions. '
-                         'See `!help` for changing positions or updating mmr as you descend into herald ')
-async def register(ctx, mmr):
+                         'See `!help` for changing positions or updating mmr as you descend into herald. '
+                         '`!register 1337 4,5` will register you as a pos 4 or 5 player with mmr of 1337')
+async def register(ctx,
+                   mmr: int = commands.parameter(description='your mmr'),
+                   positions: str = commands.parameter(default='1,2,3,4,5',
+                                                       description='positions you play (defaults to all positions)')):
+    positions = positions or '1,2,3,4,5'
+    positions = (set(map(int, positions.split(','))) & {1, 2, 3, 4, 5})
     discord_id = ctx.message.author.id
-    db.register(discord_id, mmr)
-    await ctx.send(f'registered {discord_id} with mmr of {mmr} mmr. Use `!set_mmr <mmr>` if incorrect.')
+    db.register(discord_id, mmr, positions=positions)
+    await ctx.send(f'registered {discord_id} with mmr of {mmr} mmr and positions {positions}. '
+                   f'Use `!set_mmr <mmr>` if incorrect.')
 
 
 @bot.command(brief='Suggest players to party with',
              description='Suggests players to play with based on mmr difference (optional, default 1000) and position')
-async def suggest(ctx, mmr_diff=1000, max_suggestions=10):
+async def suggest(ctx,
+                  mmr_diff: int = commands.parameter(default=1000,
+                                                     description='max mmr difference between you and suggestions'),
+                  max_suggestions: int = commands.parameter(default=5,
+                                                            description='max suggestions (max 20)')):
     discord_id = ctx.message.author.id
     if not db.get_mmr(discord_id):
         await ctx.send('please !register first')
         return
     did_to_member = {m.id: m for m in bot.get_all_members()}
-    suggestions = [(did, mmr) for did, mmr in db.relevant_players(discord_id, mmr_diff, max_suggestions) if
+    suggestions = [(did, mmr) for did, mmr in db.relevant_players(discord_id, mmr_diff, min(20, max_suggestions)) if
                    _status(did_to_member, did) == Status.online]
     if not suggestions:
         await ctx.send('could not find suggestions :(')
@@ -103,39 +116,30 @@ async def get_mmr(ctx):
 
 @bot.command(brief='Set your mmr',
              description='Set your mmr. Show with `!get_mmr`')
-async def set_mmr(ctx, new_mmr: int):
+async def set_mmr(ctx, new_mmr: int = commands.parameter(description='new mmr to set')):
     discord_id = ctx.message.author.id
     old_mmr = db.get_mmr(discord_id)
     db.update_mmr(discord_id, new_mmr)
     await ctx.send(f'mmr set {old_mmr} -> {new_mmr}')
 
 
-@bot.command(brief='Add position.',
-             description='Add a position you play. '
-                         'Show current positions using `!positions`. Remove with `!remove_position`')
-async def add_position(ctx, new_position: int):
+@bot.command(brief='Set positions you play',
+             description='Set the positions you play.'
+                         'Show current positions using `!positions`.')
+async def set_positions(ctx,
+                        new_positions: str = commands.parameter(default='1,2,3,4,5',
+                                                                description='positions to set')):
+    new_positions = set(map(int, new_positions.split(',')))
     discord_id = ctx.message.author.id
     old_positions = db.get_positions(discord_id)
-    db.add_position(discord_id, new_position)
-    new_positions = db.get_positions(discord_id)
-    await ctx.send(f'positions set {old_positions} -> {new_positions}')
-
-
-@bot.command(brief='Remove a position you no longer play',
-             description='Remove a position you no longer play. '
-                         'See current positions with `!positions`. Add with `!add_position`')
-async def remove_position(ctx, position: int):
-    discord_id = ctx.message.author.id
-    old_positions = db.get_positions(discord_id)
-    db.remove_position(discord_id, position)
-    new_positions = db.get_positions(discord_id)
+    db.set_positions(discord_id, new_positions)
     await ctx.send(f'positions set {old_positions} -> {new_positions}')
 
 
 @bot.command(brief='Get your current positions',
              name='positions',
              description='Get your current positions. Add with `!add_position`, remove with `!remove_position`')
-async def get_positions(ctx, ):
+async def get_positions(ctx):
     discord_id = ctx.message.author.id
     positions = db.get_positions(discord_id)
     await ctx.send(f'positions: {positions}')
@@ -162,17 +166,22 @@ async def backup(ctx):
              description='fake register',
              hidden=True)
 @protected
-async def fake(ctx, mmr):
+async def fake(ctx,
+               mmr: int = commands.parameter(description='mmr to set'),
+               positions: str = commands.parameter(description='positions to set (e.g. 4,5)')):
+    positions = (set(map(int, positions)) & {1, 2, 3, 4, 5}) or {1, 2, 3, 4, 5}
     discord_id = random.randint(-999999, -1)
-    db.register(discord_id, mmr)
-    await ctx.send(f'registered {discord_id} with mmr of {mmr} mmr. Use `!set_mmr <mmr>` if incorrect.')
+    db.register(discord_id, mmr, positions)
+    await ctx.send(f'registered {discord_id} with mmr of {mmr} mmr with positions {1, 2, 3, 4, 5}. '
+                   f'Use `!set_mmr <mmr>` if incorrect.')
 
 
 @bot.command(brief='restore back up',
              description='restore backup db',
              hidden=True)
 @protected
-async def restore(ctx, bkp):
+async def restore(ctx,
+                  bkp: str = commands.parameter(description='backup name')):
     response = s3.restore(bkp)
     await ctx.send(response)
 
