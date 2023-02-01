@@ -1,3 +1,17 @@
+A discord bot to find a party in dota 2.
+
+Usage:
+
+Register: `!register <mmr> <positions>`
+Find suggestions: `!suggest <max_mmr_diff>`
+
+Example:
+--------
+```
+!register 3500 4,5
+!suggest 1000
+```
+
 Prerequisites:
 --------------
 - Set DISCORD_TOKEN to your bot's token
