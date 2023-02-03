@@ -79,7 +79,8 @@ async def suggest(ctx,
     headers = template.format('Discord Id', 'MMR', 'Status')
     separator = '-' * len(headers)
     table = '\n'.join(template.format(did, mmr, str(_status(did_to_member, did))) for did, mmr in suggestions)
-    await ctx.send('\n'.join([mentions, table_sep, headers, separator, table, table_sep]))
+    await ctx.message.author.send('\n'.join([mentions, table_sep, headers, separator, table, table_sep]))
+    await ctx.send('suggestions sent in private to not disturb people')
 
 
 @bot.command(brief='Show all registered players',
